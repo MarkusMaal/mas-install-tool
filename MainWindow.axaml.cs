@@ -1,13 +1,21 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Management;
 using System.Reflection;
 using System.Threading;
 using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
+using LibUsbDotNet;
+using LibUsbDotNet.LibUsb;
+using LibUsbDotNet.Main;
 using SFML.Audio;
+using Usb.Net;
+using UsbDevice = Usb.Net.UsbDevice;
 
 namespace mas_install_tool;
 
@@ -17,9 +25,43 @@ public partial class MainWindow : Window
     private readonly string _bgmFile = Path.GetTempFileName();
     private bool _animate;
     private readonly string? _assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
+    private readonly string[]? _driveInfo;
     
     public MainWindow()
     {
+        if (OperatingSystem.IsWindows()) // uses WMIC (System.Management)
+        {
+            foreach (var drv in DriveInfo.GetDrives())
+            {
+                if (drv.DriveType == DriveType.Removable)
+                    _driveInfo = [$";{GetSerialFromDrive(drv.RootDirectory.FullName)};"];
+            }
+        }
+
+        if (OperatingSystem.IsLinux()) // uses LibUsbDotNet
+        {
+            var commandLine = Environment.ProcessPath;
+            if (commandLine == null) return;
+            var p = new Process()
+            {
+                StartInfo = new ProcessStartInfo("pkexec", commandLine + " --collect-info") // prompts the user for root permissions
+                {
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                }
+            };
+            p.Start();
+            p.WaitForExit();
+            var stdout = p.StandardOutput.ReadToEnd();
+            var stderr = p.StandardError.ReadToEnd();
+            _driveInfo = stdout.Split(Environment.NewLine);
+            _driveInfo = [.. _driveInfo.Take(_driveInfo.Length - 1)];
+            if (stderr.Contains("error", StringComparison.InvariantCultureIgnoreCase))
+            {
+                Console.WriteLine("Root access is required for USB device identification");
+                Environment.Exit(255);
+            }
+        }
         InitializeComponent();
         if (Design.IsDesignMode) return;
         new Thread(() =>
@@ -59,6 +101,16 @@ public partial class MainWindow : Window
                 var str = AssetLoader.Open(new Uri($"avares://{_assemblyName}/Resources/root_idc_key.png"));
                 CenterImage.Source = new Bitmap(str);
                 CenterText.Content = "Andmete dekrüpteerimine";
+            });
+            do
+            {
+                Thread.Sleep(100);
+            } while (!InstallTools.CheckAuthority(_driveInfo ?? []));
+
+            Dispatcher.UIThread.Post(() =>
+            {
+                CenterImage.IsVisible = false;
+                CenterText.IsVisible = false;
             });
         }).Start();
     }
@@ -103,5 +155,37 @@ public partial class MainWindow : Window
                 ao.Close();
             }
         }).Start();
+    }
+
+    private string GetSerialFromDrive(string mount)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            try
+            {
+                using var partitions = new ManagementObjectSearcher("ASSOCIATORS OF {Win32_LogicalDisk.DeviceID='" +
+                                                                    mount +
+                                                                    "'} WHERE ResultClass=Win32_DiskPartition");
+                foreach (var partition in partitions.Get())
+                {
+                    using var drives = new ManagementObjectSearcher("ASSOCIATORS OF {Win32_DiskPartition.DeviceID='" +
+                                                                    partition["DeviceID"] +
+                                                                    "'} WHERE ResultClass=Win32_DiskDrive");
+                    foreach (var drive in drives.Get())
+                    {
+                        return (string)drive["SerialNumber"];
+                    }
+                }
+            }
+            catch
+            {
+                return "<error>";
+            }
+        }
+        else
+        {
+            return "<unsupported>";
+        }
+        return "<unknown>";
     }
 }
