@@ -1,3 +1,4 @@
+![Puu ikoon](tree.ico)
 # Markuse asjade juurutamise tööriist
 
 See programm võimaldab automaatselt juurutada seadme Markuse arvuti asjadega juhul kui arvutisse on sisestatud autoriseeritud Markuse mälupulk seade.
