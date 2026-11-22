@@ -6,3 +6,4 @@ riderModule.iml
 .idea
 Resources/*.npg
 /mas-install-tool.sln.DotSettings.user
+out/
