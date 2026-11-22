@@ -63,6 +63,7 @@ public class Verifile
     /// <summary>
     /// Generates a dummy edition.txt with valid certificate
     /// </summary>
+    /// <param name="securityCode">Security code for verifile verification (required for generating dummy certificate)</param>
     public static void GenerateDummyCertificate(string securityCode)
     {
         BuildJavaFinder();
