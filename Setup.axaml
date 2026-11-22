@@ -1,0 +1,52 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="mas_install_tool.Setup" Width="659" Height="530"
+        Icon="Resources/mas_general.png" Loaded="Control_OnLoaded" Closing="Window_OnClosing"
+        Title="Markuse asjade juurutamise tööriist">
+    <Grid>
+        <Image RenderOptions.BitmapInterpolationMode="HighQuality"
+               Source="Resources/mas_general.png" Margin="12,12,0,0"
+               Stretch="Uniform" Width="99" Height="91" HorizontalAlignment="Left" VerticalAlignment="Top" />
+        <Label Name="StuffLabel"
+               Width="210" Margin="131,35,0,0"
+               FontFamily="Segoe UI" FontSize="24" HorizontalAlignment="Left" VerticalAlignment="Top">markuse asjad</Label>
+        <TextBlock TextWrapping="Wrap" HorizontalAlignment="Center" VerticalAlignment="Top" FontSize="12"
+               Margin="8, 120, 8, 0">Tere tulemast Markuse asjade paigaldusviisardisse! Sisestage sobivad andmed ja seejärel juurutame arvuti sobiva Markuse asjade versiooniga.</TextBlock>
+        <StackPanel Margin="8, 160, 0, 0" Width="600" Orientation="Vertical" Spacing="5" HorizontalAlignment="Center">
+               <StackPanel Orientation="Horizontal" Spacing="10">
+                      <StackPanel Orientation="Vertical">
+                             <Label>Väljaanne</Label>
+                             <RadioButton Name="BPlusRadioButton" IsCheckedChanged="ToggleButton_OnIsCheckedChanged" IsChecked="True">Basic+</RadioButton>
+                             <RadioButton Name="PremiumRadioButton" IsCheckedChanged="ToggleButton_OnIsCheckedChanged">Premium</RadioButton>
+                             <RadioButton Name="ProRadioButton" IsCheckedChanged="ToggleButton_OnIsCheckedChanged">Pro</RadioButton>
+                      </StackPanel>
+                      <WrapPanel Orientation="Horizontal" Width="550" ItemSpacing="8" LineSpacing="5">
+                             <CheckBox Name="InfoCheck" IsCheckedChanged="NoCheck">Väljaande info</CheckBox>
+                             <CheckBox Name="WallCheck" IsCheckedChanged="NoCheck">Taustapilt</CheckBox>
+                             <CheckBox Name="IpCheck" IsCheckedChanged="NoCheck">Integratiooniprogramm</CheckBox>
+                             <CheckBox Name="OptCheck" IsCheckedChanged="NoCheck">Valikulised funktsioonid</CheckBox>
+                             <CheckBox Name="MaiaCheck" IsCheckedChanged="NoCheck">Veebiserver</CheckBox>
+                             <CheckBox Name="NoteCheck" IsCheckedChanged="NoCheck">Töölaua märkmed</CheckBox>
+                             <CheckBox Name="FlashCheck" IsCheckedChanged="NoCheck">Mälupulga lukustus</CheckBox>
+                      </WrapPanel>
+               </StackPanel>
+               <Label Name="OptLabel" IsVisible="False">Valikulised funktsioonid</Label>
+               <WrapPanel Name="OptPanel" ItemSpacing="8" LineSpacing="5" IsVisible="False">
+                      <CheckBox Name="ItCheck">Interaktiivne töölaud</CheckBox>
+                      <CheckBox Name="WxCheck" IsEnabled="False">Windows 10+</CheckBox>
+                      <CheckBox Name="GpCheck" IsEnabled="False">Grupipoliitika</CheckBox>
+                      <CheckBox Name="RmCheck" IsEnabled="False">Rainmeter</CheckBox>
+                      <CheckBox Name="CsCheck" IsEnabled="False">Klassikaline start menüü</CheckBox>
+                      <CheckBox Name="RdCheck">Kaugjuhtimine</CheckBox>
+                      <CheckBox Name="LtCheck" IsEnabled="False">LiveTuner</CheckBox>
+               </WrapPanel>
+               <Label FontSize="10" Name="WarningLabel" HorizontalAlignment="Center" Margin="0, 20">Ärge lülitage juurutamise protsessi käigus arvutit välja, sulgege programmi ega katkestage võrguühendust!</Label>
+        </StackPanel>
+        <Button Click="ConfirmButton_OnClick" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                Width="85" HorizontalContentAlignment="Center"
+                Margin="0,0,15,15">Kinnita</Button>
+    </Grid>
+</Window>

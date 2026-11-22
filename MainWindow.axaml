@@ -32,7 +32,7 @@
                 Juurutamise protsess võib kaua aega võtta.<LineBreak/>
                 Ärge lülitage protsessi käigus käsitsi arvutit välja!
             </TextBlock>
-            <Label FontFamily="Segoe UI"
+            <Label FontFamily="Segoe UI" Name="TopLeftText"
                    Margin="9, 9, 0, 0"
                    FontSize="18">Etapp 1: Teabe kogumine</Label>
             <Image Source="Resources/mas_general.png" Width="64"

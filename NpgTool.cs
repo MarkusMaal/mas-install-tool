@@ -10,6 +10,8 @@ namespace mas_install_tool;
 
 public abstract class NpgTool
 {
+    public static int Count = 0;
+    public static int Progress = 0;
     private static uint[]? _crcTable;
     public static void Pack(string dir)
     {
@@ -111,15 +113,16 @@ public abstract class NpgTool
         Console.WriteLine("Finished!");
     }
 
-    public static void Unpack(string npg, string output)
+    public static void Unpack(Stream inputStream, string output)
     {
         var outDir = new DirectoryInfo(output);
         if (!outDir.Exists) outDir.Create();
-        using var inputStream = File.OpenRead(npg);
         inputStream.Position = 0x29;
         var buffer = new byte[8];
         inputStream.ReadExactly(buffer);
         var entryCount = BitConverter.ToUInt32(buffer, 0);
+        Progress = 0;
+        Count = (int)entryCount;
         var alignment = BitConverter.ToUInt32(buffer, 4);
         for (var i = 0; i < entryCount; i++)
         {
@@ -154,8 +157,17 @@ public abstract class NpgTool
             os.Close();
             ms.Close();
             inputStream.Position = lastPos;
+            Progress = i;
         }
+        Progress = Count;
+        Count = -1;
         inputStream.Close();
+    }
+
+    public static void Unpack(string npg, string output)
+    {
+        using var inputStream = File.OpenRead(npg);
+        Unpack(inputStream, output);
     }
     
     // Call this function with the compressed image bytes, 

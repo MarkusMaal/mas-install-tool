@@ -61,6 +61,48 @@ public class Verifile
     }
 
     /// <summary>
+    /// Generates a dummy edition.txt with valid certificate
+    /// </summary>
+    public static void GenerateDummyCertificate(string securityCode)
+    {
+        BuildJavaFinder();
+        var p = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = FindJava(),
+                Arguments = " --enable-native-access=ALL-UNNAMED -jar \"" + root + "/verifile2.jar\" -d " + securityCode,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden,
+            }
+        };
+        p.Start();
+    }
+
+    /// <summary>
+    /// Unlocks verifile for making modification to edition.txt file
+    /// </summary>
+    public static void UnlockVerifile()
+    {
+        BuildJavaFinder();
+        var p = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = FindJava(),
+                Arguments = " --enable-native-access=ALL-UNNAMED -jar \"" + root + "/verifile2.jar\" -w",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden,
+            }
+        };
+        p.Start();
+    }
+
+    /// <summary>
     /// Performs Verifile 2.0 attestation
     /// </summary>
     /// <returns>Attestation result as string specified by the Verifile 2.0 standard</returns>

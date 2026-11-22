@@ -6,16 +6,15 @@ using System.Linq;
 using System.Management;
 using System.Reflection;
 using System.Threading;
+using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
-using LibUsbDotNet;
-using LibUsbDotNet.LibUsb;
-using LibUsbDotNet.Main;
+using MsBox.Avalonia;
+using MsBox.Avalonia.Enums;
 using SFML.Audio;
-using Usb.Net;
-using UsbDevice = Usb.Net.UsbDevice;
 
 namespace mas_install_tool;
 
@@ -29,39 +28,45 @@ public partial class MainWindow : Window
     
     public MainWindow()
     {
-        if (OperatingSystem.IsWindows()) // uses WMIC (System.Management)
+        if (!Design.IsDesignMode)
         {
-            foreach (var drv in DriveInfo.GetDrives())
+            if (OperatingSystem.IsWindows()) // uses WMIC (System.Management)
             {
-                if (drv.DriveType == DriveType.Removable)
-                    _driveInfo = [$";{GetSerialFromDrive(drv.RootDirectory.FullName)};"];
+                foreach (var drv in DriveInfo.GetDrives())
+                {
+                    if (drv.DriveType == DriveType.Removable)
+                        _driveInfo = [$";{GetSerialFromDrive(drv.RootDirectory.FullName)};"];
+                }
+            }
+
+            if (OperatingSystem.IsLinux()) // uses LibUsbDotNet
+            {
+                var commandLine = Environment.ProcessPath;
+                if (commandLine == null) return;
+                var p = new Process()
+                {
+                    StartInfo =
+                        new ProcessStartInfo("pkexec",
+                                commandLine + " --collect-info") // prompts the user for root permissions
+                            {
+                                RedirectStandardOutput = true,
+                                RedirectStandardError = true,
+                            }
+                };
+                p.Start();
+                p.WaitForExit();
+                var stdout = p.StandardOutput.ReadToEnd();
+                var stderr = p.StandardError.ReadToEnd();
+                _driveInfo = stdout.Split(Environment.NewLine);
+                _driveInfo = [.. _driveInfo.Take(_driveInfo.Length - 1)];
+                if (stderr.Contains("error", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    Console.WriteLine("Root access is required for USB device identification");
+                    Environment.Exit(255);
+                }
             }
         }
 
-        if (OperatingSystem.IsLinux()) // uses LibUsbDotNet
-        {
-            var commandLine = Environment.ProcessPath;
-            if (commandLine == null) return;
-            var p = new Process()
-            {
-                StartInfo = new ProcessStartInfo("pkexec", commandLine + " --collect-info") // prompts the user for root permissions
-                {
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                }
-            };
-            p.Start();
-            p.WaitForExit();
-            var stdout = p.StandardOutput.ReadToEnd();
-            var stderr = p.StandardError.ReadToEnd();
-            _driveInfo = stdout.Split(Environment.NewLine);
-            _driveInfo = [.. _driveInfo.Take(_driveInfo.Length - 1)];
-            if (stderr.Contains("error", StringComparison.InvariantCultureIgnoreCase))
-            {
-                Console.WriteLine("Root access is required for USB device identification");
-                Environment.Exit(255);
-            }
-        }
         InitializeComponent();
         if (Design.IsDesignMode) return;
         new Thread(() =>
@@ -95,23 +100,104 @@ public partial class MainWindow : Window
         }).Start();
         new Thread(() =>
         {
-            Thread.Sleep(2500);
+            Thread.Sleep(1000);
+            var vf = new Verifile();
+            if (Verifile.CheckVerifileTamper() && vf.MakeAttestation().Equals("VERIFIED"))
+            {
+                Task? task = null;
+                ToggleCenter(false);
+                Dispatcher.UIThread.Post(() =>
+                {
+                    task = MessageBoxShow(
+                        "Arvuti on juba juurutatud. Soovi korral saate käivitada programm --bless argumendiga, et lisada sõrmejälg mälupulgale.",
+                        "Markuse asjade juurutamise tööriist", ButtonEnum.Ok, MsBox.Avalonia.Enums.Icon.Success);
+                });
+                while (!task?.IsCompleted ?? true) Thread.Sleep(100);
+                Dispatcher.UIThread.Post(Close);
+                return;
+            }
+            if (Verifile.CheckVerifileTamper() && !vf.MakeAttestation().Equals("VERIFIED"))
+            {
+                Task? task = null;
+                ToggleCenter(false);
+                Dispatcher.UIThread.Post(() =>
+                {
+                    task = MessageBoxShow(
+                        "Arvuti pole õigesti juurutatud. Palun kustuta .mas kataloog kasutaja kaustast ning käivita see programm uuesti. Programm sulgub nüüd.",
+                        "Markuse asjade juurutamise tööriist", ButtonEnum.Ok, MsBox.Avalonia.Enums.Icon.Error);
+                });
+                while (!task?.IsCompleted ?? true) Thread.Sleep(100);
+                Dispatcher.UIThread.Post(Close);
+                return;
+            }
             Dispatcher.UIThread.Post(() =>
             {
                 var str = AssetLoader.Open(new Uri($"avares://{_assemblyName}/Resources/root_idc_key.png"));
                 CenterImage.Source = new Bitmap(str);
                 CenterText.Content = "Andmete dekrüpteerimine";
             });
+            var attempts = 0;
             do
             {
-                Thread.Sleep(100);
-            } while (!InstallTools.CheckAuthority(_driveInfo ?? []));
+                Thread.Sleep(1000);
+                attempts++;
+            } while (!InstallTools.CheckAuthority(_driveInfo ?? []) && attempts < 10);
+            if (attempts >= 10)
+            {
+                Task? task = null;
+                ToggleCenter(false);
+                Dispatcher.UIThread.Post(() =>
+                {
+                    task = MessageBoxShow(
+                        "Sobiva sõrmejäljega mälupulka ei leitud. Programm sulgub nüüd.",
+                        "Markuse asjade juurutamise tööriist", ButtonEnum.Ok, MsBox.Avalonia.Enums.Icon.Error);
+                });
+                while (!task?.IsCompleted ?? true) Thread.Sleep(100);
+                Dispatcher.UIThread.Post(Close);
+                return;
+            }
+            ToggleCenter(false);
+            Thread.Sleep(100);
+            InstallTools.RunSetup(this);
+        }).Start();
+    }
 
+    internal void ToggleCenter(bool visible)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            CenterImage.IsVisible = visible;
+            CenterText.IsVisible = visible;
+            MidProgress.IsVisible = visible;
+        });
+    }
+
+    internal void Finish()
+    {
+        _animate = false;
+        Dispatcher.UIThread.Post(() =>
+        {
+            TopLeftText.Content = "Valmis";
+            NoticeText.IsVisible = false;
+        });
+        new Thread(() =>
+        {
+            Task? task = null;
+            ToggleCenter(false);
             Dispatcher.UIThread.Post(() =>
             {
-                CenterImage.IsVisible = false;
-                CenterText.IsVisible = false;
+                task = MessageBoxShow("Seade juurutati edukalt", "Markuse asjade juurutamise tööriist", ButtonEnum.Ok, MsBox.Avalonia.Enums.Icon.Success);
             });
+            while (!task?.IsCompleted ?? true) Thread.Sleep(100);
+            Dispatcher.UIThread.Post(Close);
+            while (!task.IsCompleted)
+            {
+                Thread.Sleep(100);
+            }
+
+            Dispatcher.UIThread.Post(Close);
+            Thread.Sleep(1000);
+            Environment.Exit(0);
         }).Start();
     }
 
@@ -128,7 +214,7 @@ public partial class MainWindow : Window
             File.Delete(_bgmFile);
     }
 
-    private void AnimateCenter()
+    internal void AnimateCenter()
     {
         List<Stream> animObjects = [];
         for (var i = 1; i <= 12; i++)
@@ -145,7 +231,14 @@ public partial class MainWindow : Window
                     ao.Position = 0;
                     Dispatcher.UIThread.Post(() =>
                     {
-                        CenterImage.Source = new Bitmap(ao);
+                        try
+                        {
+                            CenterImage.Source = new Bitmap(ao);
+                        }
+                        catch (ArgumentException)
+                        {
+                            Console.WriteLine("Error displaying bitmap!");
+                        }
                     });
                     Thread.Sleep(200);
                 }
@@ -157,7 +250,7 @@ public partial class MainWindow : Window
         }).Start();
     }
 
-    private string GetSerialFromDrive(string mount)
+    private static string GetSerialFromDrive(string mount)
     {
         if (OperatingSystem.IsWindows())
         {
@@ -187,5 +280,12 @@ public partial class MainWindow : Window
             return "<unsupported>";
         }
         return "<unknown>";
+    }
+    // Reimplementation of WinForms MessageBox.Show
+    private Task<ButtonResult> MessageBoxShow(string message, string caption = "Markuse arvuti juurutamise tööriist", ButtonEnum buttons = ButtonEnum.Ok, Icon icon = MsBox.Avalonia.Enums.Icon.None)
+    {
+        var box = MessageBoxManager.GetMessageBoxStandard(caption, message, buttons, icon);
+        var result = box.ShowWindowDialogAsync(this);
+        return result;
     }
 }

@@ -21,6 +21,7 @@
         <PackageReference Include="SharpZipLib" Version="1.4.2" />
         <PackageReference Include="SFML.Audio" Version="3.0.0" />
         <PackageReference Include="System.Management" Version="11.0.0" />
+        <PackageReference Include="MessageBox.Avalonia" Version="12.0.0" />
     </ItemGroup>
 
     <ItemGroup>
@@ -66,6 +67,20 @@
       <AvaloniaResource Include="Resources\root_root_12.png" />
       <AvaloniaResource Remove="MasCommon\**" />
       <None Remove="MasCommon\**" />
+      <None Remove="Resources\windows.npg" />
+      <AvaloniaResource Include="Resources\windows.npg" />
+      <None Remove="Resources\scripts.npg" />
+      <AvaloniaResource Include="Resources\scripts.npg" />
+      <None Remove="Resources\version.npg" />
+      <AvaloniaResource Include="Resources\version.npg" />
+      <None Remove="Resources\maia.npg" />
+      <AvaloniaResource Include="Resources\maia.npg" />
+      <None Remove="Resources\graphics.npg" />
+      <AvaloniaResource Include="Resources\graphics.npg" />
+      <None Remove="Resources\core.npg" />
+      <AvaloniaResource Include="Resources\core.npg" />
+      <None Remove="Resources\bin.npg" />
+      <AvaloniaResource Include="Resources\bin.npg" />
     </ItemGroup>
 
     <ItemGroup>
