@@ -8,7 +8,6 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
-using Avalonia.Controls.Documents;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
@@ -21,7 +20,7 @@ namespace mas_install_tool;
 public partial class MainWindow : Window
 {
     private Music? _mp;
-    private readonly string _bgmFile = Path.GetTempFileName();
+    private string _bgmFile = Path.GetTempFileName();
     private bool _animate;
     private readonly string? _assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
     private readonly string[]? _driveInfo;
@@ -32,11 +31,16 @@ public partial class MainWindow : Window
         {
             if (OperatingSystem.IsWindows()) // uses WMIC (System.Management)
             {
+                List<string> drives = [];
                 foreach (var drv in DriveInfo.GetDrives())
                 {
                     if (drv.DriveType == DriveType.Removable)
-                        _driveInfo = [$";{GetSerialFromDrive(drv.RootDirectory.FullName)};"];
+                    {
+                        drives.Add($";{GetSerialFromDrive(drv.RootDirectory.FullName[..^1])};");
+                    }
                 }
+
+                _driveInfo = [.. drives];
             }
 
             if (OperatingSystem.IsLinux()) // uses LibUsbDotNet
@@ -85,6 +89,12 @@ public partial class MainWindow : Window
             {
                 Thread.Sleep(100);
             }
+
+            if (OperatingSystem.IsWindows())
+            {
+                _bgmFile = Path.GetTempFileName();
+            }
+
             File.Delete(_bgmFile);
             using var los = new FileStream(_bgmFile, FileMode.Create);
             asset = AssetLoader.Open(new Uri($"avares://{_assemblyName}/Resources/root_bg_loop.wav"));
@@ -210,7 +220,7 @@ public partial class MainWindow : Window
         }
         if (_mp?.Status == SoundStatus.Playing) 
             _mp?.Stop();
-        if (File.Exists(_bgmFile))
+        if (File.Exists(_bgmFile) && !OperatingSystem.IsWindows())
             File.Delete(_bgmFile);
     }
 

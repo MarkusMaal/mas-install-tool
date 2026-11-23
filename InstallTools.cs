@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -198,6 +199,7 @@ public abstract class InstallTools
                             whitelist.Write("");
                             whitelist.Close();
                         }
+
                         _statusText = "Binraaride lahtipakkimine";
                         var binFiles = AssetLoader.Open(new Uri($"avares://{AssemblyName}/Resources/bin.npg"));
                         NpgTool.Unpack(binFiles, Path.Join(masRoot, "Markuse asjad"));
@@ -219,7 +221,7 @@ public abstract class InstallTools
                         if (OperatingSystem.IsWindows())
                         {
                             _statusText = "Windowsi failide lahtipakkimine";
-                            var winFiles = AssetLoader.Open(new Uri($"avares://{AssemblyName}/Resources/bin.npg"));
+                            var winFiles = AssetLoader.Open(new Uri($"avares://{AssemblyName}/Resources/windows.npg"));
                             NpgTool.Unpack(winFiles, Path.Join(masRoot));
                             winFiles.Close();
                         }
@@ -247,6 +249,19 @@ public abstract class InstallTools
                                     fi.Name.Contains(".xml", StringComparison.InvariantCultureIgnoreCase)) continue;
                                 File.SetUnixFileMode(fi.FullName, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute | UnixFileMode.GroupRead | UnixFileMode.OtherRead);
                             }
+                        }
+
+                        if (OperatingSystem.IsWindows())
+                        {
+                            var p = new Process();
+                            p.StartInfo.UseShellExecute = false;
+                            p.StartInfo.CreateNoWindow = true;
+                            p.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+                            p.StartInfo.FileName = "cmd.exe";
+                            p.StartInfo.Arguments = "/C mklink /j " + Path.Join(Environment.GetEnvironmentVariable("HOMEDRIVE"), "mas") + " \"" +
+                                                    masRoot + "\"";
+                            p.Start();
+                            p.WaitForExit();
                         }
                         parent.Finish();
                     }).Start();
@@ -285,7 +300,7 @@ public abstract class InstallTools
             select StringCipher.Decrypt(verifyData, passPhrase))
                 .Any(claimedSerial => usbDevices.Select(usbDevice => usbDevice.Split(';'))
                 .Select(split => split[1])
-                .Any(deviceSerial => deviceSerial.StartsWith(claimedSerial) && claimedSerial.Length > 8));
+                .Any(deviceSerial => deviceSerial.StartsWith(claimedSerial[..deviceSerial.Length]) && claimedSerial.Length > 8));
     }
     
      // krüpti/dekrüpti
